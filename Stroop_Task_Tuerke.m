@@ -4,7 +4,7 @@
 % Idea: 
 % - Fixcross (500 ms)
 % - Stimulus (Word in color, kb wait, max. 4 sec.)
-% - measure RT djkjkkjfdjfkfjjjkdk
+% - measure RT
 % - Feedback
 % - at the end of the task: results as feedback (false, correct)
 % - Intertrial Interval (500 ms)
@@ -25,16 +25,16 @@
 % Save the results as .xlsx
 % =======================================================================
 
-% === Biodata ===
+% === Demodata ===
 prompt = {
-    'VP-Nummer:'
+    'VP-Nummer: (VP_00)'
     'Geburtsdatum (TT.MM.JJJJ):'
     'Geschlecht (m/w/div):'
 };
 
-dlgtitle = 'Teilnehmerdaten';
+dlgtitle = 'Versuchspersonendaten';
 fieldsize = [1 50];
-definput = {'VP00', '00.00.0000', 'm'};
+definput = {'VP_00', '00.00.0000', 'm'};
 
 answer = inputdlg(prompt, dlgtitle, fieldsize, definput);
 
@@ -43,7 +43,7 @@ if isempty(answer)
     error('Experiment abgebrochen.');
 end
 
-vp        = answer{1};
+vp       = answer{1};
 birthday = answer{2};
 gender   = answer{3};
 
@@ -145,8 +145,8 @@ results = cell(nTrials,7);
 
 % Fliptime
 tPre = 0.5; % Fixcross
-ITI = 0.5;
-maxRespTime = 3;
+ITI = 0.5; % Inter-Trial Interval 
+maxRespTime = 2;
 
 % === Trial Loop ===
 % Fixcross
@@ -161,6 +161,8 @@ Screen('DrawTexture', window, fixcrossTex, [], fixRect);
     
     % Wait for keypress
     keyPressed = 0;
+    pressedKey = NaN;
+    rt = NaN;
     while ~keyPressed && GetSecs - stimOn < maxRespTime
         [keyIsDown, ~, keyCode] = KbCheck;
         if keyIsDown
@@ -172,15 +174,15 @@ Screen('DrawTexture', window, fixcrossTex, [], fixRect);
     
     % Check Correctness
     word = trials{t,2};
-    color = trials{t,3};
+    color = trials{t,4};
     
-    if strcmp(word,'ROT') && pressedKey == keys.red
+    if strcmp(color,'ROT') && pressedKey == keys.red
         correct = 1;
-    elseif strcmp(word,'GRUEN') && pressedKey == keys.green
+    elseif strcmp(color,'GRUEN') && pressedKey == keys.green
         correct = 1;
-    elseif strcmp(word,'BLAU') && pressedKey == keys.blue
+    elseif strcmp(color,'BLAU') && pressedKey == keys.blue
         correct = 1;
-    elseif strcmp(word,'GELB') && pressedKey == keys.yellow
+    elseif strcmp(color,'GELB') && pressedKey == keys.yellow
         correct = 1;
     else
         correct = 0;
@@ -196,18 +198,24 @@ Screen('DrawTexture', window, fixcrossTex, [], fixRect);
     Screen('Flip', window);
     WaitSecs(ITI);
     
-    keyName = KbName(pressedKey);
-    switch keyName
-    case 'd'
-        pressedColor = 'ROT';
-    case 'f'
-        pressedColor = 'GRUEN';
-    case 'j'
-        pressedColor = 'BLAU';
-    case 'k'
-        pressedColor = 'GELB';
-    otherwise
-        pressedColor = 'UNKNOWN';
+    
+    if isnan(pressedKey)
+        pressedColor = 'MISSED';
+        correct = 0;
+    else
+        keyName = KbName(pressedKey);
+        switch keyName
+        case 'd'
+            pressedColor = 'ROT';
+        case 'f'
+            pressedColor = 'GRUEN';
+        case 'j'
+            pressedColor = 'BLAU';
+        case 'k'
+            pressedColor = 'GELB';
+            otherwise
+            pressedColor = 'MISSED';
+        end
     end
     
     results{t,1} = vp;
@@ -220,12 +228,13 @@ Screen('DrawTexture', window, fixcrossTex, [], fixRect);
     results{t,8} = pressedColor;
     results{t,9} = rt;
     results{t,10} = correct;
+    
+    keyPressed = 0;
 end
 
 resultsDir = 'Stroop_Results';
 T = cell2table(results, 'VariableNames',{'VP','Geburtstag','Geschlecht','Trial','Word','Color','Condition','KeyPressed','RT','Correct'});
-vpStr = sprintf('%02d', vp);
-filename = fullfile(resultsDir,['VP_' vpStr '_Stroop.xlsx']);
+filename = fullfile(resultsDir,[vp '_Stroop.xlsx']);
 writetable(T, filename);
 
 RestrictKeysForKbCheck([]);
